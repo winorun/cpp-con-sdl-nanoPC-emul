@@ -1,8 +1,12 @@
 const int START_DISPLAY_MEMORY=0;
 const int END_DISPLAY_MEMORY=START_DISPLAY_MEMORY+9;
-const int START_PROGRAMM_MEMORY=0x10;
 const int PC_STATUS_MEMORY=0xA;
 const int NEXT_COMMAND_MEMORY=0xB;
+const int KEY_STOP_VECTOR_MEMORY=0xC;
+const int KEY_BUF_MEMORY=0xD;
+const int CMP_BUF_MEMORY=0xE;
+const int STACK_HEAD_MEMORY=0xF;
+const int START_PROGRAMM_MEMORY=0x10;
 
 //PC_STATUS
 const unsigned char PC_STATUS_ERROR_MAX_VALUE=0x01;
@@ -54,18 +58,74 @@ void clearConsole(){
 }
 
 unsigned char * const getOptDefauld(unsigned char * const opt, unsigned char optParam){
-const unsigned char OPT_PARAM_LINK=0b01;
 const unsigned char OPT_PARAM_VALUE=0b00;
-const unsigned char OPT_PARAM_NEXT=0b10;
-const unsigned char OPT_PARAM_PREV=0b11;
+const unsigned char OPT_PARAM_LINK=0b01;
+const unsigned char OPT_PARAM_PREV=0b10;
+const unsigned char OPT_PARAM_STACK=0b11;
 
     switch(optParam){
         case OPT_PARAM_VALUE:return opt;break;
         case OPT_PARAM_LINK :return &memory[*opt]; break;
-        case OPT_PARAM_NEXT :return opt+*opt; break;
         case OPT_PARAM_PREV :return opt-*opt; break;
+        case OPT_PARAM_STACK :return &memory[STACK_HEAD_MEMORY-*opt]; break;
     }
     return opt;
+}
+
+void stk_pop(unsigned char * const opt){
+    unsigned char * const head = &memory[STACK_HEAD_MEMORY]; 
+    *opt=memory[*head];
+    *head=*head-1;
+}
+
+void stk_push(unsigned char * const opt){
+    unsigned char * const head = &memory[STACK_HEAD_MEMORY]; 
+    memory[*head]=*opt;
+    *head=*head+1;
+}
+
+void cmd_stk(){
+    const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
+    const unsigned char cmdb = memory[i]%0x10;
+    unsigned char * const opt = getOptDefauld(&memory[i+1],cmdb%0b100);
+
+    switch(cmdb/0b100){
+        case 0:stk_push(opt);break;
+        case 1:stk_pop(opt);break;
+        default: memory[PC_STATUS_MEMORY]=PC_STATUS_NODEFINE_PARAM_COMMAND;
+    }
+
+    memory[NEXT_COMMAND_MEMORY]+=2;
+}
+
+
+void cmd_jmp(){
+    const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
+    const unsigned char cmdb = memory[i]%0x10;
+    unsigned char * const opt = getOptDefauld(&memory[i+1],cmdb%0b100);
+    unsigned char cmp = cmdb/0b100; 
+
+    if(cmp==memory[CMP_BUF_MEMORY]){
+        memory[NEXT_COMMAND_MEMORY]=*opt;
+        return;
+    }
+    if(cmp==0){
+        memory[NEXT_COMMAND_MEMORY]=*opt;
+        return;
+    }
+    memory[NEXT_COMMAND_MEMORY]+=2;
+}
+
+void cmd_cmp(){
+    const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
+    const unsigned char cmdb = memory[i]%0x10;
+    unsigned char * const opt1 = getOptDefauld(&memory[i+1],cmdb%0b100);
+    unsigned char * const opt2 = getOptDefauld(&memory[i+2],cmdb/0b100); 
+
+    if(*opt1 >  *opt2)memory[CMP_BUF_MEMORY]=1;
+    if(*opt1 == *opt2)memory[CMP_BUF_MEMORY]=2;
+    if(*opt1 <  *opt2)memory[CMP_BUF_MEMORY]=3;
+    memory[NEXT_COMMAND_MEMORY]+=3;
 }
 
 void sub(unsigned char * const opt1, unsigned char * const opt2){
@@ -79,17 +139,10 @@ void sub(unsigned char * const opt1, unsigned char * const opt2){
 void cmd_sub(){
     const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
     const unsigned char cmdb = memory[i]%0x10;
-    unsigned char * const opt1 = &memory[i+1];
-    unsigned char * const opt2 = &memory[i+2]; 
+    unsigned char * const opt1 = getOptDefauld(&memory[i+1],cmdb%0b100);
+    unsigned char * const opt2 = getOptDefauld(&memory[i+2],cmdb/0b100); 
 
-    switch(cmdb){
-        case 0:sub(opt1,opt2);break;
-        case 1:sub(&memory[*opt1],opt2); break;
-        case 4:sub(opt1,&memory[*opt2]); break;
-        case 5:sub(&memory[*opt1],&memory[*opt2]); break;
-        default: memory[PC_STATUS_MEMORY]=PC_STATUS_NODEFINE_PARAM_COMMAND;
-    }
-
+    sub(opt1,opt2);
     memory[NEXT_COMMAND_MEMORY]+=3;
 }
 
@@ -104,6 +157,11 @@ void add(unsigned char * const opt1, unsigned char * const opt2){
 void cmd_add(){
     const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
     const unsigned char cmdb = memory[i]%0x10;
+
+    unsigned char * const opt1 = getOptDefauld(&memory[i+1],cmdb%0b100);
+    unsigned char * const opt2 = getOptDefauld(&memory[i+2],cmdb/0b100); 
+    add(opt1,opt2);
+/*
     unsigned char * const opt1 = &memory[i+1];
     unsigned char * const opt2 = &memory[i+2]; 
 
@@ -114,6 +172,7 @@ void cmd_add(){
         case 5:add(&memory[*opt1],&memory[*opt2]); break;
         default: memory[PC_STATUS_MEMORY]=PC_STATUS_NODEFINE_PARAM_COMMAND;
     }
+*/
 
     memory[NEXT_COMMAND_MEMORY]+=3;
 
@@ -122,11 +181,12 @@ void cmd_add(){
 void cmd_mov(){
     const unsigned char i = memory[NEXT_COMMAND_MEMORY]; 
     const unsigned char cmdb = memory[i]%0x10;
-    unsigned char * const opt1 = &memory[i+1];
-    unsigned char * const opt2 = &memory[i+2]; 
+    unsigned char * const opt1 = getOptDefauld(&memory[i+1],cmdb%0b100);
+    unsigned char * const opt2 = getOptDefauld(&memory[i+2],cmdb/0b100); 
 
     memory[NEXT_COMMAND_MEMORY]+=3;
     
+    /*
     switch(cmdb){
         case 0:*opt1=*opt2;break;
         case 1:memory[*opt1]=*opt2; break;
@@ -134,6 +194,8 @@ void cmd_mov(){
         case 5:memory[*opt1]=memory[*opt2]; break;
         default: memory[PC_STATUS_MEMORY]=PC_STATUS_NODEFINE_PARAM_COMMAND;
     }
+    */
+    *opt1=*opt2;
 }
 
 bool runOneStep(){
@@ -145,6 +207,9 @@ bool runOneStep(){
         case 1: cmd_mov(); break;
         case 2: cmd_add(); break;
         case 3: cmd_sub(); break;
+        case 4: cmd_cmp(); break;
+        case 5: cmd_jmp(); break;
+        case 6: cmd_stk(); break;
         default: memory[PC_STATUS_MEMORY]=PC_STATUS_NODEFINE_COMMAND;
     }
     if(memory[PC_STATUS_MEMORY]>=0x10)return false;
