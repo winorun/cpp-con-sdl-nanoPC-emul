@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string>
 
 #include "function.h"
 
@@ -14,6 +15,7 @@ int main(int argc, char *argv[])
         gotoHomeConsole();
         printMemory();
         printDisplay();
+//        printGraphicDisplay();
         debug();
         usleep(700);
     } 
