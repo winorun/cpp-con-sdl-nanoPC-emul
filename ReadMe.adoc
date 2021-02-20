@@ -1,0 +1,70 @@
+= AsciiDoc Article Template
+
+.Command
+[%header]
+|===
+| comand hex | command | opt | description
+| 1 | mov | default | mov
+| 2 | add | default | add
+| 3 | sub | default | sub
+| 4 | cmp | default | cmp
+| 5 | jmp |  |
+| 6 | stk |  |
+|===
+
+.default opt
+|===
+| hex | opt2  | opt2 bin | opt1  | opt1
+| 0   | value | 00       | value | 00
+| 1   | value | 00       | link  | 01
+| 2   | value | 00       | next  | 10
+| 3   | value | 00       | stack | 11
+| 4   | link  | 01       | value | 00 
+| 5   | link  | 01       | link  | 01 
+| 6   | link  | 01       | next  | 10 
+| 7   | link  | 01       | stack | 11 
+| 8   | next  | 10       | value | 00
+| 9   | next  | 10       | link  | 01
+| A   | next  | 10       | next  | 10
+| B   | next  | 10       | stack | 11
+| C   | stack | 11       | value | 00
+| D   | stack | 11       | link  | 01
+| E   | stack | 11       | next  | 10
+| F   | stack | 11       | stack | 11
+|===
+
+.stack opt
+|===
+| hex | opt2  | opt2 bin | opt1  | opt1
+| 0   | push  | 00       | value | 00
+| 1   | push  | 00       | link  | 01
+| 2   | push  | 00       | next  | 10
+| 3   | push  | 00       | stack | 11
+| 4   | pop   | 01       | value | 00 
+| 5   | pop   | 01       | link  | 01 
+| 6   | pop   | 01       | next  | 10 
+| 7   | pop   | 01       | stack | 11 
+|===
+
+.jmp opt
+|===
+| hex | jmp/ij| opt2 bin | opt1  | opt1
+| 0   | jump/ | 00       | value | 00
+| 1   | jump_ | 00       | link  | 01
+| 2   |  if_  | 00       | next  | 10
+| 3   | cmp   | 00       | stack | 11
+| 4   |   <   | 01       | value | 00 
+| 5   |   /   | 01       | link  | 01 
+| 6   |   >=  | 01       | next  | 10 
+| 7   |       | 01       | stack | 11 
+| 8   |   >   | 10       | value | 00
+| 9   |   /   | 10       | link  | 01
+| A   |   <=  | 10       | next  | 10
+| B   |       | 10       | stack | 11
+| C   |   ==  | 11       | value | 00
+| D   |   /   | 11       | link  | 01
+| E   |   !=  | 11       | next  | 10
+| F   |       | 11       | stack | 11
+|===
+
+
